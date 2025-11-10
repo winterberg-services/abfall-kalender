@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winterberg Abfallkalender</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/uno.css">
+</head>
+<body class="bg-gray-50 font-sans">
+<div class="max-w-7xl mx-auto p-3 md:p-5">
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold mb-2">Winterberg Abfallkalender</h1>
+        <p class="text-gray-600">Ihre Abfuhrtermine auf einen Blick</p>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="bg-yellow-50 border border-yellow-300 rounded-md p-4 mb-5 flex items-center gap-3">
+        <div class="text-2xl flex-shrink-0">⚠️</div>
+        <div class="text-sm text-yellow-800 leading-relaxed">
+            Alle Angaben ohne Gewähr. Bitte melden Sie fehlerhafte Daten unter <strong>winterberg.services[at]gmail.com</strong>. Danke!
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="bg-white p-6 rounded-lg shadow-sm mb-5">
+        <!-- Main Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-5 items-start">
+            <!-- District Selector -->
+            <div class="flex flex-col">
+                <label class="font-semibold mb-2 text-gray-700">Ortsteil:</label>
+                <select id="ortsteil" class="w-full p-2 border border-gray-300 rounded text-sm bg-white"></select>
+            </div>
+
+            <!-- Subscribe Button -->
+            <a href="#" id="subscribe-link"
+               class="flex flex-col items-center justify-center bg-green-600 text-white rounded-lg px-5 py-3 no-underline text-center transition-all hover:bg-green-700 hover:-translate-y-0.5 active:translate-y-0 shadow-md shadow-green-600/30 hover:shadow-lg hover:shadow-green-600/40">
+                <span class="font-semibold">Kalender abonnieren</span>
+                <span class="text-xs opacity-85 mt-1">Einmal einrichten, automatische Updates</span>
+            </a>
+
+            <!-- Options Toggle -->
+            <button id="options-toggle" onclick="toggleOptions()"
+                    class="col-span-full text-left text-sm text-gray-600 hover:text-gray-900 transition-colors mt-2 bg-transparent border-none p-0 w-auto cursor-pointer">
+                <span id="toggle-icon" class="inline-block transition-transform duration-300 mr-1.5 text-xs">▼</span>
+                Andere Optionen
+            </button>
+        </div>
+
+        <!-- Advanced Options (Accordion) -->
+        <div id="advanced-options" class="max-h-0 overflow-hidden transition-all duration-300">
+            <!-- Waste Filter -->
+            <div class="pt-5 border-t border-gray-200 mt-5">
+                <div class="flex items-center mb-3">
+                    <label class="text-sm font-semibold text-gray-700">Abfalltypen filtern:</label>
+                    <button id="filter-toggle" onclick="toggleAllWaste()"
+                            class="text-xs text-gray-600 hover:text-gray-900 ml-2.5 bg-transparent border-none p-0 cursor-pointer">
+                        Alle auswählen
+                    </button>
+                </div>
+                <div id="waste-filter" class="flex flex-wrap gap-2.5"></div>
+            </div>
+
+            <!-- Download Section -->
+            <div class="pt-5 border-t border-gray-200 mt-5">
+                <h4 class="text-base font-semibold mb-4 text-gray-800">Download (ohne automatische Updates)</h4>
+
+                <!-- Year Selection -->
+                <div class="flex items-center gap-2.5 mb-4">
+                    <label class="text-sm font-semibold text-gray-700 min-w-15">Jahr:</label>
+                    <select id="year" class="p-2 border border-gray-300 rounded text-sm w-37.5 bg-white"></select>
+                </div>
+
+                <!-- Format Selection -->
+                <div class="mb-5">
+                    <label class="text-sm font-semibold text-gray-700 block mb-2.5">Format:</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-1.5 cursor-pointer text-sm select-none">
+                            <input type="radio" name="format" value="ics" checked onchange="onFormatChange(this.value)"
+                                   class="cursor-pointer">
+                            iCalendar
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-sm select-none">
+                            <input type="radio" name="format" value="csv" onchange="onFormatChange(this.value)"
+                                   class="cursor-pointer">
+                            CSV
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-sm select-none">
+                            <input type="radio" name="format" value="json" onchange="onFormatChange(this.value)"
+                                   class="cursor-pointer">
+                            JSON
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Reminders (only for ICS) -->
+                <div id="reminders-section" class="transition-all duration-300 overflow-hidden mb-5">
+                    <label class="text-sm font-semibold text-gray-700 block mb-2.5">Erinnerungen:</label>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="reminder-2days" onchange="updateReminderState()"
+                                   class="w-4 h-4 cursor-pointer">
+                            <label for="reminder-2days" class="cursor-pointer select-none">2 Tage vorher</label>
+                        </div>
+                        <div id="reminder-item-2days" class="flex items-center gap-2">
+                            <span class="text-gray-600">um</span>
+                            <input type="text" id="time-2days" value="18:00" pattern="[0-2][0-9]:[0-5][0-9]"
+                                   placeholder="HH:MM"
+                                   class="w-15 px-1.5 py-1 text-sm text-center border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="reminder-1day" checked onchange="updateReminderState()"
+                                   class="w-4 h-4 cursor-pointer">
+                            <label for="reminder-1day" class="cursor-pointer select-none">1 Tag vorher</label>
+                        </div>
+                        <div id="reminder-item-1day" class="flex items-center gap-2">
+                            <span class="text-gray-600">um</span>
+                            <input type="text" id="time-1day" value="19:00" pattern="[0-2][0-9]:[0-5][0-9]"
+                                   placeholder="HH:MM"
+                                   class="w-15 px-1.5 py-1 text-sm text-center border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="reminder-same" onchange="updateReminderState()"
+                                   class="w-4 h-4 cursor-pointer">
+                            <label for="reminder-same" class="cursor-pointer select-none">Am selben Tag</label>
+                        </div>
+                        <div id="reminder-item-same" class="flex items-center gap-2">
+                            <span class="text-gray-600">um</span>
+                            <input type="text" id="time-same" value="07:00" pattern="[0-2][0-9]:[0-5][0-9]"
+                                   placeholder="HH:MM"
+                                   class="w-15 px-1.5 py-1 text-sm text-center border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="downloadCalendar()"
+                        class="bg-blue-600 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 border-none w-auto">
+                    <span id="download-text">Herunterladen</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="bg-white p-5 rounded-lg shadow-sm">
+        <div id="legend" class="flex flex-wrap justify-center gap-5 mb-8"></div>
+        <div id="calendar" class="calendar-grid"></div>
+    </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/calendar.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+# Binaries
+
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+*.test
+*.out
+/vendor/
+go.work
+
+# Data files
+calendar_data.json
+calendar_data.json.backup
+*.backup
+
+# Secrets
+auth.secret
+*.secret
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+*.pdf
+
+node_modules

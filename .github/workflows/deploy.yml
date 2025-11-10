@@ -1,0 +1,64 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '^1.25'
+          cache: true
+
+      - name: Build Go binary
+        env:
+          GOTOOLCHAIN: auto
+        run: |
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o abfall-kalender ./cmd/abfall-kalender
+          chmod +x abfall-kalender
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies and generate CSS
+        run: |
+          npm install
+          npm run css
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        run: |
+          # Stop service first
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl stop abfall-kalender"
+
+          # Copy binary
+          scp -i ~/.ssh/deploy_key abfall-kalender ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/apps/abfall-kalender/
+
+          # Copy static files
+          scp -i ~/.ssh/deploy_key -r cmd/abfall-kalender/static ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/apps/abfall-kalender/
+
+          # Start service
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl start abfall-kalender"
+
+      - name: Verify deployment
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "systemctl status abfall-kalender --no-pager"

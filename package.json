@@ -1,0 +1,13 @@
+{
+  "name": "abfall-kalender",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "css": "unocss 'cmd/abfall-kalender/static/**/*.html' -o cmd/abfall-kalender/static/css/uno.css",
+    "css:watch": "unocss 'cmd/abfall-kalender/static/**/*.html' -o cmd/abfall-kalender/static/css/uno.css --watch"
+  },
+  "devDependencies": {
+    "unocss": "^66.5.5"
+  }
+}

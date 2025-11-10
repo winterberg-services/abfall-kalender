@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abfallkalender Editor</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/uno.css">
+</head>
+<body class="bg-gray-50 font-sans">
+<!-- Toast notification -->
+<div id="toast" class="hidden fixed top-5 right-5 bg-green-600 text-white px-6 py-4 rounded-md shadow-lg z-50 font-medium"></div>
+<!-- Confirmation Modal -->
+<div id="confirm-modal" class="hidden fixed inset-0 bg-black/50 z-40 items-center justify-center">
+    <div class="bg-white p-8 rounded-lg max-w-lg shadow-2xl">
+        <div class="text-xl mb-4 font-bold" id="modal-title"></div>
+        <div class="mb-6 leading-relaxed" id="modal-message"></div>
+        <div class="flex gap-2.5 justify-end">
+            <button class="bg-gray-600 text-white px-5 py-2.5 rounded cursor-pointer text-sm transition-colors hover:bg-gray-700" onclick="closeModal()">Abbrechen</button>
+            <button class="bg-blue-600 text-white px-5 py-2.5 rounded cursor-pointer text-sm transition-colors hover:bg-blue-700" id="modal-confirm-btn"></button>
+        </div>
+    </div>
+</div>
+<div class="max-w-400 mx-auto grid grid-cols-[350px_1fr] gap-5 p-3 md:p-5">
+    <!-- Eingabe Panel -->
+    <div class="bg-white p-5 rounded-lg shadow-sm">
+        <h1 class="text-xl mb-5 text-gray-800 font-semibold">Abfallkalender Editor</h1>
+
+        <label class="block mb-1.5 font-medium text-sm text-gray-700">Ortsteil:</label>
+        <select id="ortsteil" class="w-full p-2 mb-3 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"></select>
+
+        <label class="block mb-1.5 font-medium text-sm text-gray-700">Jahr:</label>
+        <input type="number" id="year" value="2025" min="2025" max="2030" class="w-full p-2 mb-3 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+
+        <h2 class="text-base mb-4 mt-5 text-gray-700">Schnelleingabe</h2>
+        <div class="bg-gray-100 p-4 rounded-md mb-5">
+            <label class="block mb-1.5 font-medium text-sm text-gray-700">Abfalltyp:</label>
+            <select id="waste_type" class="w-full p-2 mb-3 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"></select>
+
+            <label class="block mb-1.5 font-medium text-sm text-gray-700">Datum eingeben:</label>
+            <div class="help-text">Format: 8.1 (8. Januar) oder 2025-01-08<br>Enter drücken um einzutragen</div>
+            <input type="text" id="quick-date" placeholder="z.B. 8.1 oder 2025-01-08" class="w-full p-2 mb-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+
+            <div id="quick-status" class="status" style="display: none;"></div>
+        </div>
+
+        <h2 class="text-base mb-4 mt-5 text-gray-700">Legende</h2>
+        <div class="legend" id="legend"></div>
+
+        <h2 class="text-base mb-4 mt-5 text-gray-700">Aktionen</h2>
+        <button id="save-btn" onclick="saveChanges()" disabled class="w-full bg-blue-600 text-white border-none px-4 py-2.5 rounded cursor-pointer text-sm font-medium mb-2 transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">💾 Speichern</button>
+        <button id="revert-btn" onclick="revertChanges()" disabled class="w-full bg-gray-600 text-white border-none px-4 py-2.5 rounded cursor-pointer text-sm font-medium mb-2 transition-colors hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">↩️ Rückgängig</button>
+        <button onclick="reloadCalendar()" class="w-full bg-gray-600 text-white border-none px-4 py-2.5 rounded cursor-pointer text-sm font-medium mb-2 transition-colors hover:bg-gray-700">Neu laden</button>
+    </div>
+
+    <!-- Kalender -->
+    <div class="bg-white p-5 rounded-lg shadow-sm">
+        <h1 class="text-xl mb-5 text-gray-800 font-semibold">Kalender: <span id="current-ortsteil">-</span> <span id="current-year">-</span></h1>
+        <div class="calendar-grid" id="calendar"></div>
+    </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/calendar.js"></script>
+<script>
+    let config = null;
+    let calendar = null;
+    let calendarComponent = null;
+    let hasChanges = false;
+
+    // Init
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Ensure buttons start disabled
+        setHasChanges(false);
+
+        await loadConfig();
+        await checkForUnsavedChanges();
+        await reloadCalendar();
+
+        document.getElementById('ortsteil').addEventListener('change', reloadCalendar);
+        document.getElementById('year').addEventListener('change', reloadCalendar);
+
+        // Quick entry
+        document.getElementById('quick-date').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                quickAddEvent();
+            }
+        });
+    });
+
+    // Check if there are unsaved changes on load
+    async function checkForUnsavedChanges() {
+        const status = await API.getCalendarStatus();
+        setHasChanges(status.has_changes);
+    }
+
+    // Enable/disable save and revert buttons
+    function setHasChanges(value) {
+        hasChanges = value;
+        document.getElementById('save-btn').disabled = !hasChanges;
+        document.getElementById('revert-btn').disabled = !hasChanges;
+    }
+
+    async function loadConfig() {
+        config = await API.getConfig();
+
+        // Fill districts
+        const districtsSelect = document.getElementById('ortsteil');
+        config.districts.forEach(district => {
+            const option = document.createElement('option');
+            option.value = district;
+            option.textContent = district;
+            districtsSelect.appendChild(option);
+        });
+
+        // Fill waste types
+        const wasteTypeSelect = document.getElementById('waste_type');
+        Object.entries(config.wasteTypes).forEach(([key, name]) => {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = name;
+            wasteTypeSelect.appendChild(option);
+        });
+
+        // Fill legend
+        const legend = document.getElementById('legend');
+        Object.entries(config.wasteTypes).forEach(([key, name]) => {
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+
+            const color = document.createElement('div');
+            color.className = `legend-color ${key}`;
+            item.appendChild(color);
+
+            const label = document.createElement('span');
+            label.textContent = name;
+            item.appendChild(label);
+
+            legend.appendChild(item);
+        });
+    }
+
+    async function reloadCalendar() {
+        const district = document.getElementById('ortsteil').value;
+        const year = parseInt(document.getElementById('year').value);
+
+        document.getElementById('current-ortsteil').textContent = district;
+        document.getElementById('current-year').textContent = year;
+
+        const data = await API.getDistrictCalendar(district);
+
+        // Create calendar component
+        if (!calendarComponent) {
+            calendarComponent = new Calendar('#calendar', {
+                editMode: true,
+                showDeleteButtons: true,
+                enableDragDrop: true,
+                holidays: config.holidays || {},
+                onDayClick: (date) => {
+                    document.getElementById('quick-date').value = date;
+                    document.getElementById('quick-date').focus({preventScroll: true});
+                },
+                onEventDelete: async (date, type) => {
+                    const district = document.getElementById('ortsteil').value;
+                    await API.deleteEvent(district, date, type);
+                    setHasChanges(true);
+                    await reloadCalendar();
+                },
+                onEventMove: async (oldDate, newDate, type) => {
+                    const district = document.getElementById('ortsteil').value;
+                    await API.moveEvent(district, oldDate, newDate, type);
+                    setHasChanges(true);
+                    await reloadCalendar();
+                }
+            });
+        }
+
+        calendarComponent.render(year, data.events || []);
+    }
+
+    async function quickAddEvent() {
+        const district = document.getElementById('ortsteil').value;
+        const year = parseInt(document.getElementById('year').value);
+        const wasteType = document.getElementById('waste_type').value;
+        const dateInput = document.getElementById('quick-date').value.trim();
+
+        if (!dateInput) {
+            showQuickStatus('Bitte Datum eingeben', 'error');
+            return;
+        }
+
+        // Parse date
+        let isoDate;
+        if (dateInput.includes('-')) {
+            isoDate = dateInput;
+        } else if (dateInput.includes('.')) {
+            const parts = dateInput.split('.');
+            const day = parseInt(parts[0]);
+            const month = parseInt(parts[1]);
+            const yearPart = parts.length > 2 ? parseInt(parts[2]) : year;
+            const date = new Date(yearPart, month - 1, day);
+            isoDate = date.toISOString().split('T')[0];
+        } else {
+            showQuickStatus('Ungültiges Format', 'error');
+            return;
+        }
+
+        try {
+            const result = await API.addEvent(district, isoDate, wasteType);
+            if (result.status === 'exists') {
+                showQuickStatus('Termin existiert bereits', 'info');
+            } else {
+                showQuickStatus('✓ Hinzugefügt', 'success');
+                document.getElementById('quick-date').value = '';
+                setHasChanges(true);
+                await reloadCalendar();
+            }
+        } catch (e) {
+            showQuickStatus('Fehler', 'error');
+        }
+    }
+
+    function showQuickStatus(message, type) {
+        const status = document.getElementById('quick-status');
+        status.textContent = message;
+        status.className = `status ${type}`;
+        status.style.display = 'block';
+
+        setTimeout(() => {
+            status.style.display = 'none';
+        }, 2000);
+    }
+
+    // Modal functions
+    function showConfirmModal(title, message, confirmText, onConfirm) {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-message').textContent = message;
+        const confirmBtn = document.getElementById('modal-confirm-btn');
+        confirmBtn.textContent = confirmText;
+
+        // Remove old event listeners
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.addEventListener('click', () => {
+            closeModal();
+            onConfirm();
+        });
+
+        const modal = document.getElementById('confirm-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('confirm-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    // Show toast notification
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.remove('hidden');
+        toast.classList.add('block');
+
+        setTimeout(() => {
+            toast.classList.add('hidden');
+            toast.classList.remove('block');
+        }, 3000);
+    }
+
+    // Save changes (commit tmp to main with backup)
+    async function saveChanges() {
+        showConfirmModal(
+            '💾 Änderungen speichern',
+            'Möchtest du die Änderungen wirklich speichern? Es wird ein Backup der aktuellen Daten erstellt.',
+            'Speichern',
+            async () => {
+                try {
+                    await API.commitCalendar();
+                    // Re-check status after commit (tmp file should be gone)
+                    await checkForUnsavedChanges();
+                    showToast('✅ Änderungen gespeichert');
+                } catch (e) {
+                    alert('❌ Fehler beim Speichern: ' + e.message);
+                }
+            }
+        );
+    }
+
+    // Revert changes (discard tmp and reload from main)
+    async function revertChanges() {
+        showConfirmModal(
+            '↩️ Änderungen verwerfen',
+            'Möchtest du alle Änderungen wirklich verwerfen? Dies kann nicht rückgängig gemacht werden.',
+            'Verwerfen',
+            async () => {
+                try {
+                    await API.revertCalendar();
+                    await reloadCalendar();
+                    // Re-check status after revert (tmp file should be gone)
+                    await checkForUnsavedChanges();
+                    showToast('✅ Änderungen verworfen');
+                } catch (e) {
+                    alert('❌ Fehler beim Verwerfen: ' + e.message);
+                }
+            }
+        );
+    }
+</script>
+</body>
+</html>

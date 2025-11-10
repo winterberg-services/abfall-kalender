@@ -1,0 +1,405 @@
+/* Winterberg Abfallkalender - Calendar Component Only */
+
+* {
+    box-sizing: border-box;
+}
+
+/* Calendar Grid */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.month {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.month-header {
+    background: #007bff;
+    color: white;
+    padding: 12px;
+    font-weight: 600;
+    font-size: 15px;
+    text-align: center;
+}
+
+.weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.weekday {
+    padding: 8px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+}
+
+.days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: #dee2e6;
+}
+
+.day {
+    background: white;
+    height: 80px;
+    padding: 4px;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.day:hover {
+    background: #f8f9fa;
+}
+
+.day.other-month {
+    background: #fafafa;
+    color: #ccc;
+}
+
+.day.other-month .day-events {
+    display: none;
+}
+
+.day.weekend {
+    background: #f0f0f0;
+}
+
+.day.holiday {
+    background: #ffe6e6;
+}
+
+.day.today {
+    background: #fff3cd;
+}
+
+.day-number {
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+}
+
+.day.other-month .day-number {
+    color: #ccc;
+}
+
+.day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.day-events::-webkit-scrollbar {
+    width: 4px;
+}
+
+.day-events::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.day-events::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 2px;
+}
+
+.day-events::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+}
+
+/* Event Pills (Edit Mode) */
+.event-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    color: white;
+    cursor: move;
+    position: relative;
+    min-height: 14px;
+}
+
+.event-pill:hover {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+}
+
+.event-pill.restmuell {
+    background: #495057;
+}
+
+.event-pill.biotonne {
+    background: #28a745;
+}
+
+.event-pill.papiertonne {
+    background: #007bff;
+}
+
+.event-pill.gelber_sack {
+    background: #ffc107;
+    color: #333;
+}
+
+.event-pill.sondermuell {
+    background: #dc3545;
+}
+
+.event-pill.altkleider {
+    background: #fd7e14;
+}
+
+.event-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+.delete-btn {
+    width: 12px;
+    height: 12px;
+    background: rgba(0,0,0,0.3);
+    color: white;
+    border-radius: 50%;
+    font-size: 10px;
+    line-height: 12px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: bold;
+    flex-shrink: 0;
+    margin-left: 3px;
+}
+
+.delete-btn:hover {
+    background: rgba(0,0,0,0.7);
+}
+
+/* Event Stripes (Serve Mode) */
+.event-stripe {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+}
+
+.event-stripe.restmuell {
+    background: #495057;
+}
+
+.event-stripe.biotonne {
+    background: #28a745;
+}
+
+.event-stripe.papiertonne {
+    background: #007bff;
+}
+
+.event-stripe.gelber_sack {
+    background: #ffc107;
+}
+
+.event-stripe.sondermuell {
+    background: #dc3545;
+}
+
+.event-stripe.altkleider {
+    background: #fd7e14;
+}
+
+.event-stripe:hover {
+    opacity: 0.8;
+}
+
+/* Drag & Drop */
+.day.drag-over {
+    background: #cfe2ff !important;
+    box-shadow: inset 0 0 0 2px #0d6efd;
+}
+
+/* Custom Tooltip */
+.day-tooltip {
+    position: fixed;
+    background: white;
+    color: #333;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    border: 1px solid #ddd;
+    display: none;
+    min-width: 180px;
+    line-height: 1.5;
+}
+
+.day-tooltip.show {
+    display: block;
+}
+
+.day-tooltip .tooltip-date {
+    font-weight: 600;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 6px;
+    color: #333;
+}
+
+.day-tooltip .tooltip-holiday {
+    color: #dc3545;
+    font-style: italic;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.day-tooltip .tooltip-events {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.day-tooltip .tooltip-event {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.day-tooltip .tooltip-event-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.day-tooltip .tooltip-event-color.restmuell { background: #495057; }
+.day-tooltip .tooltip-event-color.biotonne { background: #28a745; }
+.day-tooltip .tooltip-event-color.papiertonne { background: #007bff; }
+.day-tooltip .tooltip-event-color.gelber_sack { background: #ffc107; }
+.day-tooltip .tooltip-event-color.sondermuell { background: #dc3545; }
+.day-tooltip .tooltip-event-color.altkleider { background: #fd7e14; }
+
+/* Legend (generated by JavaScript) */
+.legend {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+
+.legend-color.restmuell { background: #495057; }
+.legend-color.biotonne { background: #28a745; }
+.legend-color.papiertonne { background: #007bff; }
+.legend-color.gelber_sack { background: #ffc107; }
+.legend-color.sondermuell { background: #dc3545; }
+.legend-color.altkleider { background: #fd7e14; }
+
+/* Waste Type Filter Items (generated by JavaScript) */
+.waste-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.waste-legend-item:hover {
+    background: #e9ecef;
+    transform: translateY(-1px);
+}
+
+.waste-legend-item.inactive {
+    opacity: 0.4;
+    background: #fff;
+}
+
+.waste-legend-item input[type="checkbox"] {
+    display: none;
+}
+
+.waste-color-box {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.waste-legend-item label {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Edit Mode: Status Messages (generated by JavaScript) */
+.status {
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 10px;
+}
+
+.status.success {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.status.error {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.status.info {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.help-text {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+/* Reminder disabled state */
+.disabled {
+    opacity: 0.5;
+}
