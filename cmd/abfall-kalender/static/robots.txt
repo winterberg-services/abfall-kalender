@@ -1,0 +1,14 @@
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: *
+Disallow: /api/
+Allow: /
+
+Sitemap: https://abfall.winterberg.services/sitemap.xml
