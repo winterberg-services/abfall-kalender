@@ -13,8 +13,7 @@
 go.work
 
 # Data files
-calendar_data.json
-calendar_data.json.backup
+data/
 *.backup
 
 # Secrets

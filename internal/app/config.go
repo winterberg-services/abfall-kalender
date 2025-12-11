@@ -8,11 +8,11 @@ import (
 
 // Constants
 const (
-	DefaultCalendarFile = "calendar_data.json"
-	BackupDir           = "backup"
-	BackupSuffix        = ".backup"
-	TmpSuffix           = ".tmp.json"
-	FilePermissions     = 0644
+	DataDir         = "data"
+	BackupDir       = "backup"
+	BackupSuffix    = ".backup"
+	TmpSuffix       = ".tmp.json"
+	FilePermissions = 0644
 
 	// Error messages
 	ErrEditModeDisabled     = "Edit mode disabled"
@@ -22,10 +22,7 @@ const (
 	ErrInternalServer       = "Internal server error"
 	ErrFailedToSave         = "Failed to save calendar"
 	ErrFailedToGenerateJSON = "Failed to generate JSON"
-
-	// Metadata keys
-	MetadataCreatedAt = "created_at"
-	MetadataSource    = "manual"
+	ErrYearNotFound         = "Year not found"
 
 	// Mode strings
 	ModeServe = "serve"
@@ -38,8 +35,8 @@ const (
 
 // Global variables
 var (
-	CalendarFile  = DefaultCalendarFile
-	Calendar      *CalendarData
+	DataPath      string
+	Store         *CalendarStore
 	CalendarMutex sync.RWMutex
 	EditMode      bool
 
@@ -78,8 +75,8 @@ var WasteTypes = map[string]string{
 }
 
 func init() {
-	// Get calendar file path from current directory or user home
+	// Set data path from current directory
 	if cwd, err := os.Getwd(); err == nil {
-		CalendarFile = filepath.Join(cwd, "calendar_data.json")
+		DataPath = filepath.Join(cwd, DataDir)
 	}
 }

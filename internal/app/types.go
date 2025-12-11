@@ -12,9 +12,14 @@ type District struct {
 	Events []Event `json:"events"`
 }
 
-// CalendarData represents the complete calendar data structure
-type CalendarData struct {
+// YearData represents calendar data for a single year
+type YearData struct {
 	Year      int                  `json:"year"`
 	Districts map[string]*District `json:"districts"`
-	Metadata  map[string]string    `json:"metadata"`
+}
+
+// CalendarStore holds all loaded calendar years
+type CalendarStore struct {
+	Years     map[int]*YearData // year -> data
+	YearsList []int             // sorted list of available years
 }

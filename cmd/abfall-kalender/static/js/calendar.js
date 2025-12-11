@@ -21,7 +21,7 @@ class Calendar {
         this.WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
         this.WEEKDAYS_FULL = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
         this.MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-                       'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+            'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
         // Create tooltip element
         this.tooltip = document.createElement('div');

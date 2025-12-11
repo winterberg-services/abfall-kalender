@@ -35,14 +35,16 @@
             </div>
 
             <!-- Subscribe Button -->
-            <a class="flex flex-col items-center justify-center bg-green-600 text-white rounded-lg px-5 py-3 no-underline text-center transition-all hover:bg-green-700 hover:-translate-y-0.5 active:translate-y-0 shadow-md shadow-green-600/30 hover:shadow-lg hover:shadow-green-600/40" href="#"
+            <a class="flex flex-col items-center justify-center bg-green-600 text-white rounded-lg px-5 py-3 no-underline text-center transition-all hover:bg-green-700 hover:-translate-y-0.5 active:translate-y-0 shadow-md shadow-green-600/30 hover:shadow-lg hover:shadow-green-600/40"
+               href="#"
                id="subscribe-link" onclick="handleSubscribeClick(event)">
                 <span class="font-semibold">Kalender abonnieren</span>
                 <span class="text-xs opacity-85 mt-1">Einmal einrichten, immer aktuell</span>
             </a>
 
             <!-- Options Toggle -->
-            <button class="col-span-full text-left text-sm text-gray-600 hover:text-gray-900 transition-colors mt-2 bg-transparent border-none p-0 w-auto cursor-pointer" id="options-toggle"
+            <button class="col-span-full text-left text-sm text-gray-600 hover:text-gray-900 transition-colors mt-2 bg-transparent border-none p-0 w-auto cursor-pointer"
+                    id="options-toggle"
                     onclick="toggleOptions()">
                 <span class="inline-block transition-transform duration-300 mr-1.5 text-xs" id="toggle-icon">▼</span>
                 Andere Optionen
@@ -55,7 +57,8 @@
             <div class="pt-5 border-t border-gray-200 mt-5">
                 <div class="flex items-center mb-3">
                     <label class="text-sm font-semibold text-gray-700">Abfalltypen filtern:</label>
-                    <button class="text-xs text-gray-600 hover:text-gray-900 ml-2.5 bg-transparent border-none p-0 cursor-pointer" id="filter-toggle"
+                    <button class="text-xs text-gray-600 hover:text-gray-900 ml-2.5 bg-transparent border-none p-0 cursor-pointer"
+                            id="filter-toggle"
                             onclick="toggleAllWaste()">
                         Alle auswählen
                     </button>
@@ -66,7 +69,8 @@
             <!-- Download Section -->
             <div class="pt-5 border-t border-gray-200 mt-5">
                 <h4 class="text-base font-semibold mb-2 text-gray-800">Kalender herunterladen</h4>
-                <p class="text-sm text-gray-600 mb-4">Eigene Erinnerungen einstellen, aber keine automatischen Updates bei Terminänderungen.</p>
+                <p class="text-sm text-gray-600 mb-4">Eigene Erinnerungen einstellen, aber keine automatischen Updates
+                    bei Terminänderungen.</p>
 
                 <!-- Year Selection -->
                 <div class="flex items-center gap-2.5 mb-4">
@@ -79,17 +83,20 @@
                     <label class="text-sm font-semibold text-gray-700 block mb-2.5">Format:</label>
                     <div class="flex gap-4">
                         <label class="flex items-center gap-1.5 cursor-pointer text-sm select-none">
-                            <input checked class="cursor-pointer" name="format" onchange="onFormatChange(this.value)" type="radio"
+                            <input checked class="cursor-pointer" name="format" onchange="onFormatChange(this.value)"
+                                   type="radio"
                                    value="ics">
                             iCalendar
                         </label>
                         <label class="flex items-center gap-1.5 cursor-pointer text-sm select-none">
-                            <input class="cursor-pointer" name="format" onchange="onFormatChange(this.value)" type="radio"
+                            <input class="cursor-pointer" name="format" onchange="onFormatChange(this.value)"
+                                   type="radio"
                                    value="csv">
                             CSV
                         </label>
                         <label class="flex items-center gap-1.5 cursor-pointer text-sm select-none">
-                            <input class="cursor-pointer" name="format" onchange="onFormatChange(this.value)" type="radio"
+                            <input class="cursor-pointer" name="format" onchange="onFormatChange(this.value)"
+                                   type="radio"
                                    value="json">
                             JSON
                         </label>
@@ -107,19 +114,22 @@
                         </div>
                         <div class="flex items-center gap-2" id="reminder-item-2days">
                             <span class="text-gray-600">um</span>
-                            <input class="w-15 px-1.5 py-1 text-sm text-center border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" id="time-2days" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM"
+                            <input class="w-15 px-1.5 py-1 text-sm text-center border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                                   id="time-2days" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM"
                                    type="text"
                                    value="18:00">
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <input checked class="w-4 h-4 cursor-pointer" id="reminder-1day" onchange="updateReminderState()"
+                            <input checked class="w-4 h-4 cursor-pointer" id="reminder-1day"
+                                   onchange="updateReminderState()"
                                    type="checkbox">
                             <label class="cursor-pointer select-none" for="reminder-1day">1 Tag vorher</label>
                         </div>
                         <div class="flex items-center gap-2" id="reminder-item-1day">
                             <span class="text-gray-600">um</span>
-                            <input class="w-15 px-1.5 py-1 text-sm text-center border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" id="time-1day" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM"
+                            <input class="w-15 px-1.5 py-1 text-sm text-center border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                                   id="time-1day" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM"
                                    type="text"
                                    value="19:00">
                         </div>
@@ -131,7 +141,8 @@
                         </div>
                         <div class="flex items-center gap-2" id="reminder-item-same">
                             <span class="text-gray-600">um</span>
-                            <input class="w-15 px-1.5 py-1 text-sm text-center border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" id="time-same" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM"
+                            <input class="w-15 px-1.5 py-1 text-sm text-center border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                                   id="time-same" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="HH:MM"
                                    type="text"
                                    value="07:00">
                         </div>
@@ -149,6 +160,14 @@
     <!-- Calendar -->
     <div class="bg-white p-5 rounded-lg shadow-sm">
         <div class="flex flex-wrap justify-center gap-5 mb-8" id="legend"></div>
+        <!-- Year Navigation -->
+        <div class="flex items-center mb-6">
+            <button class="flex-1 text-sm text-gray-500 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors bg-transparent border-none cursor-pointer text-left"
+                    id="year-prev" onclick="changeYear(-1)"></button>
+            <span class="text-2xl font-bold px-8" id="year-display"></span>
+            <button class="flex-1 text-sm text-gray-500 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors bg-transparent border-none cursor-pointer text-right"
+                    id="year-next" onclick="changeYear(1)"></button>
+        </div>
         <div class="calendar-grid" id="calendar"></div>
     </div>
 </div>

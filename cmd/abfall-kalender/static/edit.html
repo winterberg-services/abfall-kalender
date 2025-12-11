@@ -2,22 +2,26 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Abfallkalender Editor</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <link rel="stylesheet" href="/static/css/uno.css">
+    <link href="/static/css/styles.css" rel="stylesheet">
+    <link href="/static/css/uno.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50 font-sans">
 <!-- Toast notification -->
-<div id="toast" class="hidden fixed top-5 right-5 bg-green-600 text-white px-6 py-4 rounded-md shadow-lg z-50 font-medium"></div>
+<div class="hidden fixed top-5 right-5 bg-green-600 text-white px-6 py-4 rounded-md shadow-lg z-50 font-medium"
+     id="toast"></div>
 <!-- Confirmation Modal -->
-<div id="confirm-modal" class="hidden fixed inset-0 bg-black/50 z-40 items-center justify-center">
+<div class="hidden fixed inset-0 bg-black/50 z-40 items-center justify-center" id="confirm-modal">
     <div class="bg-white p-8 rounded-lg max-w-lg shadow-2xl">
         <div class="text-xl mb-4 font-bold" id="modal-title"></div>
         <div class="mb-6 leading-relaxed" id="modal-message"></div>
         <div class="flex gap-2.5 justify-end">
-            <button class="bg-gray-600 text-white px-5 py-2.5 rounded cursor-pointer text-sm transition-colors hover:bg-gray-700" onclick="closeModal()">Abbrechen</button>
-            <button class="bg-blue-600 text-white px-5 py-2.5 rounded cursor-pointer text-sm transition-colors hover:bg-blue-700" id="modal-confirm-btn"></button>
+            <button class="bg-gray-600 text-white px-5 py-2.5 rounded cursor-pointer text-sm transition-colors hover:bg-gray-700"
+                    onclick="closeModal()">Abbrechen
+            </button>
+            <button class="bg-blue-600 text-white px-5 py-2.5 rounded cursor-pointer text-sm transition-colors hover:bg-blue-700"
+                    id="modal-confirm-btn"></button>
         </div>
     </div>
 </div>
@@ -27,35 +31,53 @@
         <h1 class="text-xl mb-5 text-gray-800 font-semibold">Abfallkalender Editor</h1>
 
         <label class="block mb-1.5 font-medium text-sm text-gray-700">Ortsteil:</label>
-        <select id="ortsteil" class="w-full p-2 mb-3 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"></select>
+        <select class="w-full p-2 mb-3 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                id="ortsteil"></select>
 
         <label class="block mb-1.5 font-medium text-sm text-gray-700">Jahr:</label>
-        <input type="number" id="year" value="2025" min="2025" max="2030" class="w-full p-2 mb-3 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+        <input class="w-full p-2 mb-3 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+               id="year" max="2030" min="2025" type="number"
+               value="2025">
 
         <h2 class="text-base mb-4 mt-5 text-gray-700">Schnelleingabe</h2>
         <div class="bg-gray-100 p-4 rounded-md mb-5">
             <label class="block mb-1.5 font-medium text-sm text-gray-700">Abfalltyp:</label>
-            <select id="waste_type" class="w-full p-2 mb-3 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"></select>
+            <select class="w-full p-2 mb-3 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                    id="waste_type"></select>
 
             <label class="block mb-1.5 font-medium text-sm text-gray-700">Datum eingeben:</label>
             <div class="help-text">Format: 8.1 (8. Januar) oder 2025-01-08<br>Enter drücken um einzutragen</div>
-            <input type="text" id="quick-date" placeholder="z.B. 8.1 oder 2025-01-08" class="w-full p-2 mb-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+            <input class="w-full p-2 mb-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                   id="quick-date" placeholder="z.B. 8.1 oder 2025-01-08"
+                   type="text">
 
-            <div id="quick-status" class="status" style="display: none;"></div>
+            <div class="status" id="quick-status" style="display: none;"></div>
         </div>
 
         <h2 class="text-base mb-4 mt-5 text-gray-700">Legende</h2>
         <div class="legend" id="legend"></div>
 
         <h2 class="text-base mb-4 mt-5 text-gray-700">Aktionen</h2>
-        <button id="save-btn" onclick="saveChanges()" disabled class="w-full bg-blue-600 text-white border-none px-4 py-2.5 rounded cursor-pointer text-sm font-medium mb-2 transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">💾 Speichern</button>
-        <button id="revert-btn" onclick="revertChanges()" disabled class="w-full bg-gray-600 text-white border-none px-4 py-2.5 rounded cursor-pointer text-sm font-medium mb-2 transition-colors hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">↩️ Rückgängig</button>
-        <button onclick="reloadCalendar()" class="w-full bg-gray-600 text-white border-none px-4 py-2.5 rounded cursor-pointer text-sm font-medium mb-2 transition-colors hover:bg-gray-700">Neu laden</button>
+        <button class="w-full bg-blue-600 text-white border-none px-4 py-2.5 rounded cursor-pointer text-sm font-medium mb-2 transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled id="save-btn"
+                onclick="saveChanges()">
+            💾 Speichern
+        </button>
+        <button class="w-full bg-gray-600 text-white border-none px-4 py-2.5 rounded cursor-pointer text-sm font-medium mb-2 transition-colors hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled id="revert-btn"
+                onclick="revertChanges()">
+            ↩️ Rückgängig
+        </button>
+        <button class="w-full bg-gray-600 text-white border-none px-4 py-2.5 rounded cursor-pointer text-sm font-medium mb-2 transition-colors hover:bg-gray-700"
+                onclick="reloadCalendar()">
+            Neu laden
+        </button>
     </div>
 
     <!-- Kalender -->
     <div class="bg-white p-5 rounded-lg shadow-sm">
-        <h1 class="text-xl mb-5 text-gray-800 font-semibold">Kalender: <span id="current-ortsteil">-</span> <span id="current-year">-</span></h1>
+        <h1 class="text-xl mb-5 text-gray-800 font-semibold">Kalender: <span id="current-ortsteil">-</span> <span
+                id="current-year">-</span></h1>
         <div class="calendar-grid" id="calendar"></div>
     </div>
 </div>

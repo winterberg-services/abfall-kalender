@@ -33,17 +33,21 @@ async function loadConfig() {
         districtsSelect.appendChild(option);
     });
 
-    // Fill years - get all available years from calendar data
-    const calendarData = await API.getCalendar();
+    // Fill years from availableYears in config
     const yearSelect = document.getElementById('year');
+    const availableYears = config.availableYears || [new Date().getFullYear()];
+    const currentYear = config.currentYear || availableYears[0];
 
-    // For now, just use current year - we'll enhance this when we have multi-year data
-    const currentYear = calendarData.year || new Date().getFullYear();
-    const option = document.createElement('option');
-    option.value = currentYear;
-    option.textContent = currentYear;
-    option.selected = true;
-    yearSelect.appendChild(option);
+    availableYears.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        option.selected = (year === currentYear);
+        yearSelect.appendChild(option);
+    });
+
+    // Initialize calendar year navigation buttons
+    updateYearNavButtons();
 
     // Fill waste types for filter (legend style)
     const wasteFilter = document.getElementById('waste-filter');
@@ -85,7 +89,7 @@ async function reloadCalendar() {
     const district = document.getElementById('ortsteil').value;
     const year = parseInt(document.getElementById('year').value);
 
-    const data = await API.getDistrictCalendar(district);
+    const data = await API.getDistrictCalendar(district, year);
 
     // Create calendar component with thin stripes
     if (!calendarComponent) {
@@ -99,6 +103,44 @@ async function reloadCalendar() {
     }
 
     calendarComponent.render(year, data.events || []);
+    updateYearNavButtons();
+}
+
+function updateYearNavButtons() {
+    const yearSelect = document.getElementById('year');
+    const currentIndex = yearSelect.selectedIndex;
+    const prevBtn = document.getElementById('year-prev');
+    const nextBtn = document.getElementById('year-next');
+    const yearDisplay = document.getElementById('year-display');
+
+    const hasPrev = currentIndex > 0;
+    const hasNext = currentIndex < yearSelect.options.length - 1;
+
+    if (prevBtn) {
+        prevBtn.disabled = !hasPrev;
+        prevBtn.innerHTML = hasPrev
+            ? `&larr; ${yearSelect.options[currentIndex - 1].value}`
+            : '&larr; Vorheriges Jahr';
+    }
+    if (nextBtn) {
+        nextBtn.disabled = !hasNext;
+        nextBtn.innerHTML = hasNext
+            ? `${yearSelect.options[currentIndex + 1].value} &rarr;`
+            : 'Nächstes Jahr &rarr;';
+    }
+    if (yearDisplay && yearSelect.value) {
+        yearDisplay.textContent = yearSelect.value;
+    }
+}
+
+function changeYear(direction) {
+    const yearSelect = document.getElementById('year');
+    const newIndex = yearSelect.selectedIndex + direction;
+
+    if (newIndex >= 0 && newIndex < yearSelect.options.length) {
+        yearSelect.selectedIndex = newIndex;
+        reloadCalendar();
+    }
 }
 
 function toggleWasteType(type) {

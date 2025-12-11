@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/klabast/wb-services/abfall-kalender/internal/app"
 	"github.com/klabast/wb-services/abfall-kalender/internal/commands"
@@ -46,24 +45,16 @@ func main() {
 		}
 	}
 
-	// Load calendar (with tmp check in edit mode)
+	// Load all calendar years (with tmp check in edit mode)
 	var loadErr error
 	if app.EditMode {
-		loadErr = app.LoadCalendarWithTmpCheck()
+		loadErr = app.LoadAllYearsWithTmpCheck()
 	} else {
-		loadErr = app.LoadCalendar()
+		loadErr = app.LoadAllYears()
 	}
 
 	if loadErr != nil {
-		log.Printf("Creating new calendar: %v", loadErr)
-		app.Calendar = &app.CalendarData{
-			Year:      time.Now().Year(),
-			Districts: make(map[string]*app.District),
-			Metadata: map[string]string{
-				app.MetadataCreatedAt: time.Now().Format(time.RFC3339),
-				app.MetadataSource:    app.MetadataSource,
-			},
-		}
+		log.Fatalf("Failed to load calendar data: %v", loadErr)
 	}
 
 	// Setup routes
@@ -94,7 +85,7 @@ func main() {
 	}
 
 	log.Printf("Starting Abfallkalender in %s mode on http://localhost:%d", mode, *port)
-	log.Printf("Calendar file: %s", app.CalendarFile)
+	log.Printf("Data directory: %s", app.DataPath)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil); err != nil {
 		log.Fatal(err)
 	}

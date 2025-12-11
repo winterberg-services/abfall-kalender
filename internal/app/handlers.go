@@ -30,20 +30,16 @@ func ServeEdit(w http.ResponseWriter, r *http.Request) {
 
 // GetConfig returns the application configuration
 func GetConfig(w http.ResponseWriter, r *http.Request) {
-	CalendarMutex.RLock()
-	currentYear := Calendar.Year
-	CalendarMutex.RUnlock()
-
-	if currentYear == 0 {
-		currentYear = time.Now().Year()
-	}
+	currentYear := GetCurrentYear()
+	availableYears := GetAvailableYears()
 
 	config := map[string]interface{}{
-		"districts":   Districts,
-		"wasteTypes":  WasteTypes,
-		"currentYear": currentYear,
-		"editMode":    EditMode,
-		"holidays":    GetNRWHolidays(currentYear),
+		"districts":      Districts,
+		"wasteTypes":     WasteTypes,
+		"currentYear":    currentYear,
+		"availableYears": availableYears,
+		"editMode":       EditMode,
+		"holidays":       GetNRWHolidays(currentYear),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(config); err != nil {
@@ -52,25 +48,41 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleCalendar returns the complete calendar data
+// HandleCalendar returns calendar data for a specific year
+// Query param: year (optional, defaults to current year)
 func HandleCalendar(w http.ResponseWriter, r *http.Request) {
-	CalendarMutex.RLock()
-	defer CalendarMutex.RUnlock()
+	yearStr := r.URL.Query().Get("year")
+	year := GetCurrentYear()
+
+	if yearStr != "" {
+		var err error
+		year, err = strconv.Atoi(yearStr)
+		if err != nil {
+			http.Error(w, ErrInvalidYear, http.StatusBadRequest)
+			return
+		}
+	}
+
+	yearData, ok := GetYear(year)
+	if !ok {
+		http.Error(w, ErrYearNotFound, http.StatusNotFound)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(Calendar); err != nil {
+	if err := json.NewEncoder(w).Encode(yearData); err != nil {
 		log.Printf("Error encoding calendar: %v", err)
 		http.Error(w, ErrInternalServer, http.StatusInternalServerError)
 	}
 }
 
-// HandleCalendarCommit commits temporary changes (creates backup and makes tmp the new main)
+// HandleCalendarCommit commits temporary changes
 func HandleCalendarCommit(w http.ResponseWriter, r *http.Request) {
 	if !RequireMethod(w, r, http.MethodPost) || !RequireEditMode(w) {
 		return
 	}
 
-	if err := CommitCalendar(); err != nil {
+	if err := CommitAllYears(); err != nil {
 		log.Printf("Error committing calendar: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -82,13 +94,13 @@ func HandleCalendarCommit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleCalendarRevert reverts temporary changes and reloads from main file
+// HandleCalendarRevert reverts temporary changes
 func HandleCalendarRevert(w http.ResponseWriter, r *http.Request) {
 	if !RequireMethod(w, r, http.MethodPost) || !RequireEditMode(w) {
 		return
 	}
 
-	if err := RevertCalendar(); err != nil {
+	if err := RevertAllYears(); err != nil {
 		log.Printf("Error reverting calendar: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -108,7 +120,7 @@ func HandleCalendarStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	status := map[string]bool{
-		"has_changes": HasTmpCalendar(),
+		"has_changes": HasTmpChanges(),
 	}
 	if err := json.NewEncoder(w).Encode(status); err != nil {
 		log.Printf("Error encoding response: %v", err)
@@ -116,14 +128,29 @@ func HandleCalendarStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleDistrictCalendar returns calendar data for a specific district
+// URL: /api/calendar/{district}?year=2025
 func HandleDistrictCalendar(w http.ResponseWriter, r *http.Request) {
 	district := r.URL.Path[len("/api/calendar/"):]
+	yearStr := r.URL.Query().Get("year")
+	year := GetCurrentYear()
 
-	CalendarMutex.RLock()
-	defer CalendarMutex.RUnlock()
+	if yearStr != "" {
+		var err error
+		year, err = strconv.Atoi(yearStr)
+		if err != nil {
+			http.Error(w, ErrInvalidYear, http.StatusBadRequest)
+			return
+		}
+	}
+
+	yearData, ok := GetYear(year)
+	if !ok {
+		http.Error(w, ErrYearNotFound, http.StatusNotFound)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if dist, ok := Calendar.Districts[district]; ok {
+	if dist, ok := yearData.Districts[district]; ok {
 		if err := json.NewEncoder(w).Encode(dist); err != nil {
 			log.Printf("Error encoding district calendar: %v", err)
 			http.Error(w, ErrInternalServer, http.StatusInternalServerError)
@@ -131,7 +158,7 @@ func HandleDistrictCalendar(w http.ResponseWriter, r *http.Request) {
 	} else {
 		if err := json.NewEncoder(w).Encode(&District{Events: []Event{}}); err != nil {
 			log.Printf("Error encoding empty district: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			http.Error(w, ErrInternalServer, http.StatusInternalServerError)
 		}
 	}
 }
@@ -153,25 +180,38 @@ func AddEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate date format
-	if _, err := time.Parse("2006-01-02", req.Date); err != nil {
+	// Validate date format and extract year
+	eventDate, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
 		http.Error(w, ErrInvalidDateFormat, http.StatusBadRequest)
 		return
 	}
+	year := eventDate.Year()
 
 	CalendarMutex.Lock()
 	defer CalendarMutex.Unlock()
 
+	// Get or create year data
+	yearData, ok := Store.Years[year]
+	if !ok {
+		// Create new year
+		yearData = &YearData{
+			Year:      year,
+			Districts: make(map[string]*District),
+		}
+		Store.Years[year] = yearData
+		Store.YearsList = append(Store.YearsList, year)
+	}
+
 	// Initialize district if needed
-	if Calendar.Districts[req.District] == nil {
-		Calendar.Districts[req.District] = &District{Events: []Event{}}
+	if yearData.Districts[req.District] == nil {
+		yearData.Districts[req.District] = &District{Events: []Event{}}
 	}
 
 	// Check if event already exists
-	events := Calendar.Districts[req.District].Events
+	events := yearData.Districts[req.District].Events
 	for _, e := range events {
 		if e.Date == req.Date && e.Type == req.WasteType {
-			// Already exists
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(map[string]string{"status": "exists"}); err != nil {
 				log.Printf("Error encoding response: %v", err)
@@ -186,20 +226,21 @@ func AddEvent(w http.ResponseWriter, r *http.Request) {
 		Type:        req.WasteType,
 		Description: WasteTypes[req.WasteType],
 	}
-	Calendar.Districts[req.District].Events = append(
-		Calendar.Districts[req.District].Events,
+	yearData.Districts[req.District].Events = append(
+		yearData.Districts[req.District].Events,
 		event,
 	)
 
 	// Sort by date
-	SortEventsByDate(Calendar.Districts[req.District].Events)
+	SortEventsByDate(yearData.Districts[req.District].Events)
 
 	// Auto-save to tmp file
-	if err := saveTmpCalendar(); err != nil {
+	if err := saveTmpYear(year); err != nil {
 		log.Printf("Error saving tmp calendar: %v", err)
 		http.Error(w, ErrFailedToSave, http.StatusInternalServerError)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
 		log.Printf("Error encoding response: %v", err)
@@ -223,10 +264,24 @@ func DeleteEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract year from date
+	eventDate, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
+		http.Error(w, ErrInvalidDateFormat, http.StatusBadRequest)
+		return
+	}
+	year := eventDate.Year()
+
 	CalendarMutex.Lock()
 	defer CalendarMutex.Unlock()
 
-	if dist, ok := Calendar.Districts[req.District]; ok {
+	yearData, ok := Store.Years[year]
+	if !ok {
+		http.Error(w, ErrYearNotFound, http.StatusNotFound)
+		return
+	}
+
+	if dist, ok := yearData.Districts[req.District]; ok {
 		newEvents := []Event{}
 		for _, e := range dist.Events {
 			if !(e.Date == req.Date && e.Type == req.Type) {
@@ -234,10 +289,10 @@ func DeleteEvent(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		dist.Events = newEvents
-		// Auto-save to tmp file
-		if err := saveTmpCalendar(); err != nil {
+
+		if err := saveTmpYear(year); err != nil {
 			log.Printf("Error saving tmp calendar: %v", err)
-			http.Error(w, "Failed to save calendar", http.StatusInternalServerError)
+			http.Error(w, ErrFailedToSave, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -266,25 +321,96 @@ func MoveEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract years
+	oldDate, err := time.Parse("2006-01-02", req.OldDate)
+	if err != nil {
+		http.Error(w, ErrInvalidDateFormat, http.StatusBadRequest)
+		return
+	}
+	newDate, err := time.Parse("2006-01-02", req.NewDate)
+	if err != nil {
+		http.Error(w, ErrInvalidDateFormat, http.StatusBadRequest)
+		return
+	}
+
+	oldYear := oldDate.Year()
+	newYear := newDate.Year()
+
 	CalendarMutex.Lock()
 	defer CalendarMutex.Unlock()
 
-	if dist, ok := Calendar.Districts[req.District]; ok {
-		for i := range dist.Events {
-			if dist.Events[i].Date == req.OldDate && dist.Events[i].Type == req.Type {
-				dist.Events[i].Date = req.NewDate
-				break
-			}
+	// If same year, just update date
+	if oldYear == newYear {
+		yearData, ok := Store.Years[oldYear]
+		if !ok {
+			http.Error(w, ErrYearNotFound, http.StatusNotFound)
+			return
 		}
 
-		// Sort by date
-		SortEventsByDate(dist.Events)
+		if dist, ok := yearData.Districts[req.District]; ok {
+			for i := range dist.Events {
+				if dist.Events[i].Date == req.OldDate && dist.Events[i].Type == req.Type {
+					dist.Events[i].Date = req.NewDate
+					break
+				}
+			}
+			SortEventsByDate(dist.Events)
 
-		// Auto-save to tmp file
-		if err := saveTmpCalendar(); err != nil {
-			log.Printf("Error saving tmp calendar: %v", err)
-			http.Error(w, "Failed to save calendar", http.StatusInternalServerError)
-			return
+			if err := saveTmpYear(oldYear); err != nil {
+				log.Printf("Error saving tmp calendar: %v", err)
+				http.Error(w, ErrFailedToSave, http.StatusInternalServerError)
+				return
+			}
+		}
+	} else {
+		// Moving between years - delete from old, add to new
+		// Delete from old year
+		oldYearData, ok := Store.Years[oldYear]
+		if ok {
+			if dist, ok := oldYearData.Districts[req.District]; ok {
+				newEvents := []Event{}
+				var movedEvent Event
+				for _, e := range dist.Events {
+					if e.Date == req.OldDate && e.Type == req.Type {
+						movedEvent = e
+					} else {
+						newEvents = append(newEvents, e)
+					}
+				}
+				dist.Events = newEvents
+
+				// Add to new year
+				newYearData, ok := Store.Years[newYear]
+				if !ok {
+					newYearData = &YearData{
+						Year:      newYear,
+						Districts: make(map[string]*District),
+					}
+					Store.Years[newYear] = newYearData
+					Store.YearsList = append(Store.YearsList, newYear)
+				}
+
+				if newYearData.Districts[req.District] == nil {
+					newYearData.Districts[req.District] = &District{Events: []Event{}}
+				}
+
+				movedEvent.Date = req.NewDate
+				newYearData.Districts[req.District].Events = append(
+					newYearData.Districts[req.District].Events,
+					movedEvent,
+				)
+				SortEventsByDate(newYearData.Districts[req.District].Events)
+
+				// Save both years
+				if err := saveTmpYear(oldYear); err != nil {
+					log.Printf("Error saving tmp calendar: %v", err)
+				}
+				if err := saveTmpYear(newYear); err != nil {
+					log.Printf("Error saving tmp calendar: %v", err)
+					http.Error(w, ErrFailedToSave, http.StatusInternalServerError)
+					return
+				}
+			}
 		}
 	}
 
@@ -308,15 +434,18 @@ func HandleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get events for district
-	CalendarMutex.RLock()
+	// Get events for district and year
+	yearData, ok := GetYear(yearInt)
+	if !ok {
+		http.Error(w, ErrYearNotFound, http.StatusNotFound)
+		return
+	}
+
 	var events []Event
-	if dist, ok := Calendar.Districts[district]; ok {
-		// Copy events to avoid holding lock during export generation
+	if dist, ok := yearData.Districts[district]; ok {
 		events = make([]Event, len(dist.Events))
 		copy(events, dist.Events)
 	}
-	CalendarMutex.RUnlock()
 
 	// Filter by waste types if specified
 	if wasteTypesFilter != "" {
@@ -335,50 +464,30 @@ func HandleDownload(w http.ResponseWriter, r *http.Request) {
 		events = filtered
 	}
 
-	// Filter by year
-	var yearEvents []Event
-	for _, e := range events {
-		if strings.HasPrefix(e.Date, year+"-") {
-			yearEvents = append(yearEvents, e)
-		}
-	}
-
 	switch format {
 	case "ics":
-		GenerateICS(w, r, district, yearInt, yearEvents)
+		GenerateICS(w, r, district, yearInt, events)
 	case "csv":
-		GenerateCSV(w, district, yearInt, yearEvents)
+		GenerateCSV(w, district, yearInt, events)
 	case "json":
-		GenerateJSON(w, district, yearInt, yearEvents)
+		GenerateJSON(w, district, yearInt, events)
 	default:
 		http.Error(w, ErrInvalidFormat, http.StatusBadRequest)
 	}
 }
 
 // HandleSubscribe handles calendar subscription requests
-// Returns an ICS feed that calendar apps can subscribe to for automatic updates
-// Returns events from (current year - 1) onwards (e.g., in 2025: returns 2024, 2025, 2026, ...)
-// URL format: /api/subscribe/{district}?wasteTypes=restmuell,biotonne
+// Returns an ICS feed with events from (current year - 1) onwards
 func HandleSubscribe(w http.ResponseWriter, r *http.Request) {
-	// Extract district from path
 	district := r.URL.Path[len("/api/subscribe/"):]
-
-	// Get query parameters
 	wasteTypesFilter := r.URL.Query().Get("wasteTypes")
+
+	// Get all events for this district across all years
+	events := GetAllEvents(district)
 
 	// Calculate minimum year (current year - 1)
 	currentYear := time.Now().Year()
 	minYear := currentYear - 1
-
-	// Get events for district
-	CalendarMutex.RLock()
-	var events []Event
-	if dist, ok := Calendar.Districts[district]; ok {
-		// Copy events to avoid holding lock during export generation
-		events = make([]Event, len(dist.Events))
-		copy(events, dist.Events)
-	}
-	CalendarMutex.RUnlock()
 
 	// Filter by waste types if specified
 	if wasteTypesFilter != "" {
@@ -400,7 +509,6 @@ func HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 	// Filter by year: include events from (current year - 1) onwards
 	var filteredEvents []Event
 	for _, e := range events {
-		// Parse year from date (format: YYYY-MM-DD)
 		if len(e.Date) >= 4 {
 			eventYear, err := strconv.Atoi(e.Date[:4])
 			if err == nil && eventYear >= minYear {
@@ -409,6 +517,5 @@ func HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Generate subscription ICS
 	GenerateSubscriptionICS(w, r, district, filteredEvents)
 }

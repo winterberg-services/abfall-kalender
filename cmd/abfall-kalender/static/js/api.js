@@ -6,20 +6,22 @@ class API {
         return await response.json();
     }
 
-    static async getCalendar() {
-        const response = await fetch('/api/calendar');
+    static async getCalendar(year = null) {
+        const url = year ? `/api/calendar?year=${year}` : '/api/calendar';
+        const response = await fetch(url);
         return await response.json();
     }
 
-    static async getDistrictCalendar(district) {
-        const response = await fetch(`/api/calendar/${district}`);
+    static async getDistrictCalendar(district, year = null) {
+        const url = year ? `/api/calendar/${district}?year=${year}` : `/api/calendar/${district}`;
+        const response = await fetch(url);
         return await response.json();
     }
 
     static async addEvent(district, date, wasteType) {
         const response = await fetch('/api/events/add', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 district,
                 date,
@@ -32,8 +34,8 @@ class API {
     static async deleteEvent(district, date, type) {
         const response = await fetch('/api/events/delete', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ district, date, type })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({district, date, type})
         });
         return await response.json();
     }
@@ -41,7 +43,7 @@ class API {
     static async moveEvent(district, oldDate, newDate, type) {
         const response = await fetch('/api/events/move', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 district,
                 old_date: oldDate,
