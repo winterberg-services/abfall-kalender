@@ -180,9 +180,9 @@ function updateDownloadText() {
 function updateReminderState() {
     // Update visual state of reminder items based on checkbox
     const reminders = [
-        { checkbox: 'reminder-2days', item: 'reminder-item-2days' },
-        { checkbox: 'reminder-1day', item: 'reminder-item-1day' },
-        { checkbox: 'reminder-same', item: 'reminder-item-same' }
+        {checkbox: 'reminder-2days', item: 'reminder-item-2days'},
+        {checkbox: 'reminder-1day', item: 'reminder-item-1day'},
+        {checkbox: 'reminder-same', item: 'reminder-item-same'}
     ];
 
     reminders.forEach(reminder => {
@@ -272,3 +272,69 @@ function toggleOptions() {
         icon.style.transform = 'rotate(180deg)';
     }
 }
+
+// Android detection and modal handling
+function isAndroid() {
+    return /Android/i.test(navigator.userAgent);
+}
+
+function getHttpsSubscribeUrl() {
+    const webcalUrl = document.getElementById('subscribe-link').href;
+    return webcalUrl.replace('webcal://', 'https://');
+}
+
+function handleSubscribeClick(event) {
+    if (isAndroid()) {
+        event.preventDefault();
+        openAndroidModal();
+    }
+    // On other platforms, let the default webcal:// link behavior happen
+}
+
+function openAndroidModal() {
+    const modal = document.getElementById('android-modal');
+    const urlDisplay = document.getElementById('subscribe-url-display');
+    urlDisplay.textContent = getHttpsSubscribeUrl();
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAndroidModal(event) {
+    // If called from overlay click, only close if clicking the overlay itself
+    if (event && event.target !== event.currentTarget) {
+        return;
+    }
+    const modal = document.getElementById('android-modal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+    // Reset copy button text
+    document.getElementById('copy-button-text').textContent = 'URL kopieren';
+}
+
+async function copySubscribeUrl() {
+    const url = getHttpsSubscribeUrl();
+    try {
+        await navigator.clipboard.writeText(url);
+        const buttonText = document.getElementById('copy-button-text');
+        buttonText.textContent = 'Kopiert!';
+        setTimeout(() => {
+            buttonText.textContent = 'URL kopieren';
+        }, 2000);
+    } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        document.getElementById('copy-button-text').textContent = 'Kopiert!';
+    }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeAndroidModal();
+    }
+});
